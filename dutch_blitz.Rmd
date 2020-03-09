@@ -1,0 +1,122 @@
+---
+title: "Dutch Blitz bonanza"
+output: 
+  rmarkdown::github_document:
+    toc: yes
+author: "Thor"
+date: "2020"
+---
+
+
+## The following is an absolute waste of time
+
+#### Load packages and scores
+```{r}
+library(openxlsx)
+library(ggplot2)
+library(reshape)
+library(gplots)
+library(colorspace)
+d = read.xlsx("https://raw.githubusercontent.com/tbj-thor/dutch_blitz/master/dutch_blitz.xlsx",colNames = T)
+d
+melt_d = melt(as.matrix(d))
+colnames(melt_d) = c("round","player","points")
+
+```
+
+
+#### </br>How much I suck
+```{r}
+p = ggplot(melt_d,aes(x=player,y=points,fill=player)) + geom_boxplot() + 
+  scale_fill_manual(values=RColorBrewer::brewer.pal(4,"Set1")[c(3,2,1,4)]) +
+  ggtitle("Distribution of points per round")
+p
+```
+
+#### </br> when ($round==7) { 4_player_game =  2_player_game }
+```{r}
+d_sum = apply(d,2,cumsum)
+melt_d_sum = melt(as.matrix(d_sum))
+colnames(melt_d_sum) = c("round","player","total.points")
+
+p = ggplot(melt_d_sum,aes(x=round,y=total.points,color=player)) + geom_point() + geom_line() +
+  scale_color_manual(values=RColorBrewer::brewer.pal(4,"Set1")[c(3,2,1,4)]) +
+  ggtitle("Accumulated points per round")
+p
+```
+
+
+
+#### </br>Hvad hvis man spillede med skæve istedet for negative point
+#### (Minus point for en spiller giver i stedet plus til alle andre)
+```{r echo=FALSE}
+calculate_points = function(points_vec) {
+  points_to_add = c()
+  for (i in 1:length(points_vec)) {
+    ext_points_vec = points_vec[-i]
+    neg_sum = sum(ext_points_vec[which(ext_points_vec < 0)])
+    points_to_add = c(points_to_add,max(points_vec[i],0)-neg_sum)
+  }
+  return(points_to_add)
+}
+```
+
+```{r}
+d_test = apply(d,1,calculate_points)
+d_test = t(d_test)
+colnames(d_test) = colnames(d)
+
+d_test_sum = apply(d_test,2,cumsum)
+melt_d_test_sum = melt(as.matrix(d_test_sum))
+colnames(melt_d_test_sum) = c("round","player","total.points")
+
+p = ggplot(melt_d_test_sum,aes(x=round,y=total.points,color=player)) + geom_point() + geom_line() +
+  scale_color_manual(values=RColorBrewer::brewer.pal(4,"Set1")[c(3,2,1,4)]) +
+  ggtitle("Accumulated points using skæve")
+p
+
+```
+
+#### (Er jævnt besværligt at holde score på den måde)
+
+
+#### Also, Claus og Mette er gode til at få point i de samme runder mens Mark som sædvanlig er på tværs af alle andre og helst vil have point når vi andre mister og miste når vi andre vinder
+```{r}
+heatmap.2(as.matrix(t(d)), trace="none",
+          col = rev(colorspace::diverge_hsv(50)),
+          Colv = F, dendrogram = "row",
+          main = "Points gained each round", xlab = "Round")
+
+```
+```{r}
+cor_mat = cor(d)
+heatmap.2(as.matrix(cor_mat), trace="none",
+          col = rev(colorspace::diverge_hsv(100)),
+          main = "Points gained correlation")
+
+```
+
+
+```{r}
+p = ggplot(d,aes(x=Mette,y=Claus)) + geom_point() + 
+  ggtitle("Points gained in rounds")
+p
+cor.test(d$Mette,d$Claus)
+```
+
+```{r}
+p = ggplot(d,aes(x=Mark,y=Mette)) + geom_point() + 
+  ggtitle("Points gained in rounds")
+p
+cor.test(d$Mark,d$Mette)
+```
+
+#### Og til sidst, en kompliceret udregning af hvor mange runder vi skulle spille hvis jeg skulle vinde
+```{r}
+75/2
+```
+
+
+
+
+
